@@ -45,13 +45,13 @@ public class WritableExcelFile<T> implements ExcelFile<T>  {
             workbook.write(outputStream);
             workbook.close();
         } catch (IOException e) {
-            throw new WorkbookWriteFailureException(e.getMessage(), e);
+            throw new WorkbookWriteFailureException(e.getMessage());
         }
     }
 
     @Override
     public List<T> read(InputStream inputStream) {
-        return new ReadOnlyExcelFile<>(this.clazz).read(inputStream);
+        return ExcelFile.readOnly(this.clazz).read(inputStream);
     }
 
     @Override
@@ -92,7 +92,7 @@ public class WritableExcelFile<T> implements ExcelFile<T>  {
 
             return getObjectValue(invokeResult);
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-            throw new ExtractFieldValueFailureException(e.getMessage(), e);
+            throw new ExtractFieldValueFailureException(e.getMessage());
         }
     }
 

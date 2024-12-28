@@ -105,7 +105,7 @@ public class ReadOnlyExcelFile<T> implements ExcelFile<T> {
             case "java.time.LocalDate" -> java.time.LocalDate.parse(value);
             case "java.time.LocalDateTime" -> java.time.LocalDateTime.parse(value);
             case "java.time.LocalTime" -> java.time.LocalTime.parse(value);
-            default -> throw new IllegalArgumentException("Unsupported field type.");
+            default -> throw new IllegalArgumentException("Unsupported field type. field=" + field.getName());
         };
     }
 
