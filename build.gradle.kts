@@ -18,6 +18,9 @@ allprojects {
     }
 
     dependencies {
+        implementation(rootProject.libs.poi.ooxml)
+        implementation(rootProject.libs.commonsLang)
+
         testImplementation(rootProject.libs.junit)
         testImplementation(rootProject.libs.assertJ)
     }

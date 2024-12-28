@@ -1,4 +1,4 @@
-package io.dori.excel.reader;
+package io.dori.excel;
 
 import io.dori.excel.annotation.Column;
 import io.dori.excel.exception.InstanceCreationFailureException;
@@ -11,6 +11,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
@@ -18,19 +19,17 @@ import java.util.Map;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public class ExcelFile<T> {
+public class ReadOnlyExcelFile<T> implements ExcelFile<T> {
     private static final int HEADER_ROW_INDEX = 0;
-
-    private final InputStream inputStream;
 
     private final Class<T> clazz;
 
-    public ExcelFile(InputStream inputStream, Class<T> clazz) {
-        this.inputStream = inputStream;
+    public ReadOnlyExcelFile(Class<T> clazz) {
         this.clazz = clazz;
     }
 
-    public List<T> read() {
+    @Override
+    public List<T> read(InputStream inputStream) {
         try (var workbook = new XSSFWorkbook(inputStream)) {
             var sheet = workbook.getSheetAt(0);
             var headers = readHeaders(sheet);
@@ -47,6 +46,15 @@ public class ExcelFile<T> {
             throw new WorkbookReadFailureException("Failed to read the Excel file. message=" + e.getMessage());
         }
     }
+
+    @Override
+    public void write(OutputStream outputStream) { ExcelFile.uoe();}
+
+    @Override
+    public void addRow(T row) { ExcelFile.uoe(); }
+
+    @Override
+    public void addRows(Iterable<T> rows) { ExcelFile.uoe(); }
 
     private Map<String, Integer> readHeaders(Sheet sheet) {
         var headerRow = sheet.getRow(HEADER_ROW_INDEX);

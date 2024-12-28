@@ -1,4 +1,4 @@
-package io.dori.excel.writer;
+package io.dori.excel;
 
 import io.dori.excel.annotation.Column;
 import io.dori.excel.exception.ExtractFieldValueFailureException;
@@ -9,6 +9,7 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -19,33 +20,38 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-public class DefaultExcelFile<T> implements ExcelFile<T> {
+public class WritableExcelFile<T> implements ExcelFile<T>  {
     private static final DateTimeFormatter ZONED_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z");
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("hh:mm:ss");
 
     private final SXSSFWorkbook workbook;
+
     private final Sheet sheet;
 
     private final Class<T> clazz;
 
-    public DefaultExcelFile(Class<T> clazz) {
+    public WritableExcelFile(Class<T> clazz) {
         this.workbook = new SXSSFWorkbook();
         this.sheet = this.workbook.createSheet("Sheet");
         this.clazz = clazz;
-
-        this.renderHeader();
     }
 
     @Override
     public void write(OutputStream outputStream) {
         try {
+            this.renderHeader();
             workbook.write(outputStream);
             workbook.close();
         } catch (IOException e) {
             throw new WorkbookWriteFailureException(e.getMessage(), e);
         }
+    }
+
+    @Override
+    public List<T> read(InputStream inputStream) {
+        return new ReadOnlyExcelFile<>(this.clazz).read(inputStream);
     }
 
     @Override
@@ -62,7 +68,7 @@ public class DefaultExcelFile<T> implements ExcelFile<T> {
     }
 
     @Override
-    public void addRows(List<T> objects) {
+    public void addRows(Iterable<T> objects) {
         objects.forEach(this::addRow);
     }
 

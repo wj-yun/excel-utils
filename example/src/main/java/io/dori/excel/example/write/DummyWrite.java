@@ -1,6 +1,6 @@
 package io.dori.excel.example.write;
 
-import io.dori.excel.writer.DefaultExcelFile;
+import io.dori.excel.ExcelFile;
 
 import java.io.FileOutputStream;
 import java.time.ZonedDateTime;
@@ -14,7 +14,7 @@ public class DummyWrite {
             dummies.add(new Dummy("USER_" + i, "USER_" + i + "@example.com", "010-0000-0000", ZonedDateTime.now()));
         }
 
-        var excelFile = new DefaultExcelFile<>(Dummy.class);
+        var excelFile = ExcelFile.writable(Dummy.class);
         excelFile.addRows(dummies);
 
         try (var outputStream = new FileOutputStream("dummy.xlsx")) {

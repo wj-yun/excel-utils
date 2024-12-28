@@ -1,7 +1,5 @@
 rootProject.name = "excel-utils"
 
-module("excel-utils-reader")
-module("excel-utils-writer")
 module("example")
 
 dependencyResolutionManagement {
