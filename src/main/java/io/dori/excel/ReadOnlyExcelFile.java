@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.lang.reflect.RecordComponent;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,8 +25,24 @@ public class ReadOnlyExcelFile<T> implements ExcelFile<T> {
 
     private final Class<T> clazz;
 
+    private final boolean isRecord;
+
+    private final Class<?>[] constructorTypes;
+
     public ReadOnlyExcelFile(Class<T> clazz) {
         this.clazz = clazz;
+        this.isRecord = clazz.isRecord();
+        this.constructorTypes = getConstructorTypes(clazz, isRecord);
+    }
+
+    private Class<?>[] getConstructorTypes(Class<T> clazz, boolean isRecord) {
+        if (!isRecord) {
+            return new Class[0];
+        }
+
+        return Stream.of(clazz.getRecordComponents())
+                .map(RecordComponent::getType)
+                .toArray(Class[]::new);
     }
 
     @Override
@@ -40,7 +57,7 @@ public class ReadOnlyExcelFile<T> implements ExcelFile<T> {
 
             return StreamSupport.stream(sheet.spliterator(), false)
                     .filter(row -> row.getRowNum() > HEADER_ROW_INDEX)
-                    .map(row -> readRow(row, headers, clazz, properties))
+                    .map(row -> readRow(row, headers, properties))
                     .toList();
         } catch (IOException e) {
             throw new WorkbookReadFailureException("Failed to read the Excel file. message=" + e.getMessage());
@@ -63,17 +80,51 @@ public class ReadOnlyExcelFile<T> implements ExcelFile<T> {
         return headers;
     }
 
-    private T readRow(Row row, Map<String, Integer> headers, Class<T> clazz, List<Field> properties) {
-        var item = createInstance(clazz);
+    private T readRow(Row row, Map<String, Integer> headers, List<Field> properties) {
+        var fieldMappedCellValues = properties.stream()
+                .filter(property -> headers.containsKey(property.getAnnotation(Column.class).headerName()))
+                .map(property -> getFieldMappedCellValue(row, headers, property))
+                .toList();
 
-        properties.forEach(property -> {
-            var cellIndex = headers.get(property.getAnnotation(Column.class).headerName());
-            var cell = row.getCell(cellIndex);
-            var value = readCell(cell);
+        return this.isRecord
+                ? readRecordTarget(fieldMappedCellValues, properties)
+                : readClassTarget(fieldMappedCellValues);
+    }
+
+    private FieldMappedCellValue getFieldMappedCellValue(Row row, Map<String, Integer> headers, Field property) {
+        var cellIndex = headers.get(property.getAnnotation(Column.class).headerName());
+        var cell = row.getCell(cellIndex);
+        var value = readCellValue(cell);
+
+        return new FieldMappedCellValue(property, value);
+    }
+
+
+    private T readRecordTarget(List<FieldMappedCellValue> fieldMappedCellValues, List<Field> properties) {
+        var constructorArgs = new Object[this.constructorTypes.length];
+        
+        fieldMappedCellValues.forEach(fieldMappedCellValue -> {
+            var index = properties.indexOf(fieldMappedCellValue.field());
+            constructorArgs[index] = writeValue(fieldMappedCellValue.value(), fieldMappedCellValue.field());
+        });
+
+        try {
+            return this.clazz.getDeclaredConstructor(this.constructorTypes).newInstance(constructorArgs);
+        } catch (Exception e) {
+            throw new InstanceCreationFailureException("Failed to create an instance of the class. class=" + this.clazz.getName());
+        }
+    }
+    
+    private T readClassTarget(List<FieldMappedCellValue> fieldMappedCellValues) {
+        var item = createInstance(this.clazz);
+
+        fieldMappedCellValues.forEach(fieldMappedCellValue -> {
+            var property = fieldMappedCellValue.field();
+            var value = fieldMappedCellValue.value();
 
             try {
                 var setterMethodName = "set" + property.getName().substring(0, 1).toUpperCase() + property.getName().substring(1);
-                var setter = clazz.getMethod(setterMethodName, property.getType());
+                var setter = this.clazz.getMethod(setterMethodName, property.getType());
                 setter.invoke(item, writeValue(value, property));
             } catch (Exception e) {
                 throw new PropertySetterNotFoundException("Failed to set a value to the field. property=" + property.getName());
@@ -83,7 +134,7 @@ public class ReadOnlyExcelFile<T> implements ExcelFile<T> {
         return item;
     }
 
-    private String readCell(Cell cell) {
+    private String readCellValue(Cell cell) {
         return switch (cell.getCellType()) {
             case NUMERIC -> String.valueOf(cell.getNumericCellValue());
             case STRING -> cell.getStringCellValue();
@@ -116,4 +167,9 @@ public class ReadOnlyExcelFile<T> implements ExcelFile<T> {
             throw new InstanceCreationFailureException("Failed to create an instance of the class. class=" + clazz.getName());
         }
     }
+    
+    record FieldMappedCellValue(
+            Field field,
+            String value
+    ) { }
 }

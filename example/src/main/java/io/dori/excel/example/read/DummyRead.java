@@ -11,7 +11,7 @@ public class DummyRead {
         var excelFilePath = "example/src/main/resources/read_example.xlsx";
 
         try (var fileInputStream = new FileInputStream(excelFilePath)) {
-            var excelFile = ExcelFile.readOnly(Dummy.class);
+            var excelFile = ExcelFile.readOnly(RecordDummy.class);
             var items = excelFile.read(fileInputStream);
 
             items.forEach(System.out::println);
