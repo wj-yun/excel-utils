@@ -1,6 +1,6 @@
 package io.dori.excel.example.write;
 
-import io.dori.excel.common.annotation.Column;
+import io.dori.excel.annotation.Column;
 
 import java.time.ZonedDateTime;
 

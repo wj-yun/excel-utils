@@ -1,6 +1,6 @@
 package io.dori.excel.example.read;
 
-import io.dori.excel.common.annotation.Column;
+import io.dori.excel.annotation.Column;
 
 public class Dummy {
     @Column(headerName = "name")
